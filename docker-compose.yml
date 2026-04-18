@@ -1,12 +1,51 @@
 version: '3.8'
 
 services:
-  app:
+  api:
     build: .
     ports:
       - "8000:8000"
-    volumes:
-      - ./config:/app/config:ro
     environment:
+      - REDIS_HOST=redis
+      - POSTGRES_HOST=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
       - LOG_LEVEL=INFO
-    restart: unless-stopped
+    depends_on:
+      - redis
+      - postgres
+    volumes:
+      - ./app:/app/app
+    command: python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=ai_platform
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  feature-store-worker:
+    build: .
+    depends_on:
+      - redis
+      - postgres
+    environment:
+      - REDIS_HOST=redis
+      - POSTGRES_HOST=postgres
+    command: python -c "from app.main import FeatureStoreService; print('Feature store worker ready')"
+
+volumes:
+  redis_data:
+  postgres_data:

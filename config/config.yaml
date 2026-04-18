@@ -1,26 +1,64 @@
-# Ai Data Platform Configuration
+# AI Data Platform Configuration
 
 app:
-  name: "Ai Data Platform"
+  name: "AI Data Platform"
   version: "2.0.0"
   debug: false
-
-features:
-  - Feature store
-  - Model registry
-  - Auto-retraining
-
-tech_stack:
-  - MLflow
-  - Feast
-  - Spark
-  - Triton
+  log_level: INFO
 
 server:
   host: "0.0.0.0"
   port: 8000
   workers: 4
 
-logging:
-  level: INFO
-  format: "%(asctime)s | %(levelname)s | %(message)s"
+feature_store:
+  online_store:
+    type: "redis"
+    host: "${REDIS_HOST:localhost}"
+    port: "${REDIS_PORT:6379}"
+    db: 0
+  offline_store:
+    type: "postgresql"
+    host: "${POSTGRES_HOST:localhost}"
+    port: "${POSTGRES_PORT:5432}"
+    database: "feature_store"
+    user: "${POSTGRES_USER:postgres}"
+    password: "${POSTGRES_PASSWORD:password}"
+
+model_registry:
+  backend_store:
+    type: "postgresql"
+    host: "${POSTGRES_HOST:localhost}"
+    port: "${POSTGRES_PORT:5432}"
+    database: "model_registry"
+  artifact_store:
+    type: "s3"
+    bucket: "mlflow-artifacts"
+    region: "us-east-1"
+
+training:
+  default_test_size: 0.2
+  default_random_state: 42
+  max_training_time_seconds: 3600
+  supported_frameworks:
+    - sklearn
+    - xgboost
+    - lightgbm
+    - pytorch
+
+retraining:
+  enabled: true
+  check_interval_minutes: 60
+  triggers:
+    - schedule
+    - performance_degradation
+    - data_drift
+  min_samples_required: 1000
+
+monitoring:
+  prometheus:
+    enabled: true
+    port: 9090
+  logging:
+    format: "json"
+    level: "INFO"
